@@ -596,6 +596,9 @@
                         let countdown = waitSec;
                         errEl.innerHTML = `⏳ إعادة المحاولة خلال <span id="retry-count">${countdown}</span> ثانية...`;
                         errEl.style.display = "block";
+                        state.history.pop();
+                        resetUIReady();
+                        document.getElementById("typing-indicator")?.remove();
                         const countInterval = setInterval(() => {
                             countdown--;
                             const el = document.getElementById("retry-count");
