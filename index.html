@@ -587,7 +587,16 @@
             try {
                 const responseData = await askGemini(apiHistory, systemInst);
                 
-                if (responseData.error) throw new Error(responseData.error.message);
+                if (responseData.error) {
+                    const errEl = document.getElementById('api-error');
+                    errEl.innerHTML = `❌ خطأ Google: ${responseData.error.message} <button onclick="handleSend()" style="background:none;border:none;color:inherit;text-decoration:underline;cursor:pointer;">إعادة المحاولة</button>`;
+                    errEl.style.display = 'block';
+                    document.getElementById('typing-indicator')?.remove();
+                    stopTimer(false);
+                    state.history.pop();
+                    resetUIReady();
+                    return;
+                }
                 
                 const aiText = responseData.candidates[0].content.parts[0].text;
                 
@@ -611,10 +620,11 @@
                     console.log('Request cancelled by user');
                 } else {
                     console.error('API Error:', err);
-                    document.getElementById('api-error').style.display = 'block';
+                    const errEl = document.getElementById('api-error');
+                    errEl.innerHTML = `❌ خطأ: ${err.message || JSON.stringify(err)} <button onclick="handleSend()" style="background:none;border:none;color:inherit;text-decoration:underline;cursor:pointer;">إعادة المحاولة</button>`;
+                    errEl.style.display = 'block';
                     document.getElementById('typing-indicator')?.remove();
                     stopTimer(false);
-                    // إزالة رسالة المستخدم من history لأنها لم تُرد عليها
                     state.history.pop(); 
                 }
             } finally {
