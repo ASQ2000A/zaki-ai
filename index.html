@@ -588,13 +588,32 @@
                 const responseData = await askGemini(apiHistory, systemInst);
                 
                 if (responseData.error) {
-                    const errEl = document.getElementById('api-error');
-                    errEl.innerHTML = `❌ خطأ Google: ${responseData.error.message} <button onclick="handleSend()" style="background:none;border:none;color:inherit;text-decoration:underline;cursor:pointer;">إعادة المحاولة</button>`;
-                    errEl.style.display = 'block';
-                    document.getElementById('typing-indicator')?.remove();
-                    stopTimer(false);
-                    state.history.pop();
-                    resetUIReady();
+                    const errMsg = responseData.error.message || "";
+                    const errEl = document.getElementById("api-error");
+                    const retryMatch = errMsg.match(/retry in ([\d.]+)s/i);
+                    if (retryMatch) {
+                        const waitSec = Math.ceil(parseFloat(retryMatch[1]));
+                        let countdown = waitSec;
+                        errEl.innerHTML = `⏳ إعادة المحاولة خلال <span id="retry-count">${countdown}</span> ثانية...`;
+                        errEl.style.display = "block";
+                        const countInterval = setInterval(() => {
+                            countdown--;
+                            const el = document.getElementById("retry-count");
+                            if (el) el.innerText = countdown;
+                            if (countdown <= 0) {
+                                clearInterval(countInterval);
+                                errEl.style.display = "none";
+                                handleSend();
+                            }
+                        }, 1000);
+                    } else {
+                        errEl.innerHTML = `❌ خطأ: ${errMsg}`;
+                        errEl.style.display = "block";
+                        document.getElementById("typing-indicator")?.remove();
+                        stopTimer(false);
+                        state.history.pop();
+                        resetUIReady();
+                    }
                     return;
                 }
                 
