@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zaki AI 🧠 - المساعد الذكي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+
+    <style>
+        :root {
+            /* الثيم الداكن (الافتراضي) */
+            --bg-color: #0d0d0d;
+            --chat-bg: #121212;
+            --header-bg: rgba(30, 30, 46, 0.75);
+            --user-bubble: #2563eb;
+            --ai-bubble: #1e1e2e;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+            --border-color: #333;
+            --input-bg: #1e1e2e;
+            --accent: #3b82f6;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --warning: #eab308;
+            --glass-blur: blur(10px);
+        }
+
+        body.light-theme {
+            /* الثيم الفاتح */
+            --bg-color: #f8fafc;
+            --chat-bg: #ffffff;
+            --header-bg: rgba(255, 255, 255, 0.85);
+            --user-bubble: #3b82f6;
+            --ai-bubble: #f1f5f9;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --input-bg: #ffffff;
+            --accent: #2563eb;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* --- شاشة الإعداد --- */
+        #setup-screen {
+            position: fixed; inset: 0; z-index: 1000;
+            background: var(--bg-color);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; transition: opacity 0.5s;
+        }
+        .setup-card {
+            background: var(--header-bg); backdrop-filter: var(--glass-blur);
+            padding: 40px; border-radius: 20px; border: 1px solid var(--border-color);
+            width: 100%; max-width: 450px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .pulse-logo {
+            font-size: 60px; color: var(--accent); margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); text-shadow: 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { transform: scale(1.05); text-shadow: 0 0 20px rgba(59, 130, 246, 0); }
+            100% { transform: scale(0.95); text-shadow: 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .input-group { margin-bottom: 20px; text-align: right; position: relative; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-muted); }
+        .setup-input, .setup-select {
+            width: 100%; padding: 12px 15px; border-radius: 10px;
+            border: 1px solid var(--border-color); background: var(--input-bg);
+            color: var(--text-main); font-size: 16px; outline: none;
+        }
+        .setup-input:focus { border-color: var(--accent); }
+        .toggle-password {
+            position: absolute; left: 15px; top: 42px; cursor: pointer; color: var(--text-muted);
+        }
+        .btn-primary {
+            background: var(--accent); color: white; border: none; padding: 12px 25px;
+            border-radius: 10px; font-size: 18px; font-weight: 600; cursor: pointer;
+            width: 100%; transition: transform 0.2s, opacity 0.2s;
+        }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn-primary:active { transform: translateY(0); }
+
+        /* --- واجهة المحادثة --- */
+        #app-container { display: none; flex-direction: column; height: 100vh; position: relative; }
+        body.focus-mode #header, body.focus-mode #stats-panel, body.focus-mode .quick-suggestions { display: none !important; }
+
+        /* الهيدر */
+        #header {
+            background: var(--header-bg); backdrop-filter: var(--glass-blur);
+            padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border-color); z-index: 10;
+        }
+        .header-info { display: flex; align-items: center; gap: 15px; }
+        .ai-title { font-size: 22px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+        .status-dot {
+            width: 12px; height: 12px; border-radius: 50%; background: var(--success);
+            box-shadow: 0 0 10px var(--success); transition: background 0.3s;
+        }
+        .status-dot.thinking { background: var(--warning); box-shadow: 0 0 10px var(--warning); animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        .user-greeting { font-size: 14px; color: var(--text-muted); }
+        .header-actions button {
+            background: none; border: none; color: var(--text-main); font-size: 20px;
+            margin-right: 15px; cursor: pointer; transition: color 0.2s;
+        }
+        .header-actions button:hover { color: var(--accent); }
+
+        /* الإحصائيات */
+        #stats-panel {
+            position: absolute; left: 20px; top: 75px; background: var(--header-bg);
+            backdrop-filter: var(--glass-blur); border: 1px solid var(--border-color);
+            border-radius: 10px; padding: 15px; z-index: 5; width: 220px;
+            transform: translateX(-150%); transition: transform 0.3s;
+        }
+        #stats-panel.show { transform: translateX(0); }
+        .stat-item { margin-bottom: 10px; font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; }
+        .stat-value { font-weight: bold; color: var(--text-main); }
+
+        /* منطقة المحادثة */
+        #chat-area {
+            flex: 1; padding: 20px; overflow-y: auto; scroll-behavior: smooth;
+            display: flex; flex-direction: column; gap: 20px; background: var(--chat-bg);
+        }
+        #chat-area::-webkit-scrollbar { width: 6px; }
+        #chat-area::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+
+        .message-wrapper { display: flex; flex-direction: column; max-width: 85%; animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .message-wrapper.user { align-self: flex-start; }
+        .message-wrapper.ai { align-self: flex-end; }
+        
+        .message-header { font-size: 12px; color: var(--text-muted); margin-bottom: 5px; display: flex; gap: 8px; }
+        .message-wrapper.ai .message-header { flex-direction: row-reverse; }
+
+        .message-bubble {
+            padding: 15px 20px; border-radius: 18px; position: relative; font-size: 16px; line-height: 1.6;
+        }
+        .message-wrapper.user .message-bubble { background: var(--user-bubble); color: #fff; border-top-right-radius: 4px; }
+        .message-wrapper.ai .message-bubble {
+            background: var(--ai-bubble); color: var(--text-main); border-top-left-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+        .message-wrapper.ai.light-theme-fix .message-bubble { color: #0f172a; } /* Fix for light theme AI text */
+
+        /* Markdown Styles داخل الرسائل */
+        .message-bubble h1, .message-bubble h2, .message-bubble h3 { margin: 10px 0; font-weight: 800; }
+        .message-bubble p { margin-bottom: 10px; }
+        .message-bubble p:last-child { margin-bottom: 0; }
+        .message-bubble ul, .message-bubble ol { margin: 10px 20px; }
+        .message-bubble a { color: var(--accent); text-decoration: underline; }
+        .message-bubble table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        .message-bubble th, .message-bubble td { border: 1px solid var(--border-color); padding: 8px; }
+        
+        /* أكواد البرمجة */
+        .code-container {
+            position: relative; margin: 15px 0; background: #1e1e1e; border-radius: 8px; overflow: hidden;
+            direction: ltr; text-align: left;
+        }
+        .code-header {
+            background: #2d2d2d; padding: 5px 15px; color: #ccc; font-size: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .copy-btn {
+            background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px;
+        }
+        .copy-btn:hover { color: #fff; }
+        pre code { display: block; padding: 15px; overflow-x: auto; font-family: monospace; font-size: 14px; }
+
+        /* ردود الأفعال */
+        .msg-actions {
+            position: absolute; bottom: -30px; display: none; gap: 10px;
+            background: var(--header-bg); padding: 5px 10px; border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+        .message-wrapper:hover .msg-actions { display: flex; }
+        .message-wrapper.user .msg-actions { left: 0; }
+        .message-wrapper.ai .msg-actions { right: 0; }
+        .msg-actions button { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+        .msg-actions button:hover { color: var(--text-main); transform: scale(1.1); }
+
+        /* مؤشر الكتابة */
+        .typing-indicator { display: flex; gap: 5px; align-items: center; padding: 10px 15px; }
+        .dot { width: 8px; height: 8px; background: var(--text-muted); border-radius: 50%; animation: bounce 1.5s infinite; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+        /* الاقتراحات السريعة */
+        .quick-suggestions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; justify-content: center; }
+        .sugg-btn {
+            background: var(--header-bg); border: 1px solid var(--border-color); color: var(--text-main);
+            padding: 10px 15px; border-radius: 20px; cursor: pointer; transition: 0.2s; font-size: 14px;
+        }
+        .sugg-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+        /* --- شريط الإدخال --- */
+        #input-area {
+            background: var(--header-bg); backdrop-filter: var(--glass-blur);
+            padding: 15px 20px; border-top: 1px solid var(--border-color);
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .timer-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); }
+        .input-wrapper { display: flex; gap: 10px; align-items: flex-end; background: var(--input-bg); padding: 10px; border-radius: 15px; border: 1px solid var(--border-color); }
+        
+        textarea {
+            flex: 1; background: transparent; border: none; color: var(--text-main);
+            resize: none; font-size: 16px; outline: none; max-height: 120px; min-height: 24px;
+            padding: 5px; line-height: 1.5;
+        }
+        
+        .action-btns { display: flex; gap: 10px; align-items: center; padding-bottom: 5px; }
+        .icon-btn { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; transition: 0.2s; }
+        .icon-btn:hover { color: var(--accent); }
+        
+        #send-btn {
+            background: var(--accent); color: white; border: none; width: 40px; height: 40px;
+            border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 16px; transition: 0.2s;
+        }
+        #send-btn:hover { transform: scale(1.05); }
+        #send-btn.cancel-mode { background: var(--danger); }
+        #send-btn:disabled { background: var(--border-color); cursor: not-allowed; transform: none; }
+
+        /* ملف مرفق مخفي */
+        #file-input { display: none; }
+
+        /* رسالة الخطأ */
+        .error-msg { color: var(--danger); font-size: 14px; text-align: center; margin-top: 10px; display: none; }
+
+        /* التجاوب مع الجوال */
+        @media (max-width: 600px) {
+            .message-wrapper { max-width: 95%; }
+            #stats-panel { width: 90%; left: 5%; top: 70px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="setup-screen">
+        <div class="setup-card">
+            <i class="fa-solid fa-brain pulse-logo"></i>
+            <h2>مرحباً بك في Zaki AI</h2>
+            <p style="color: var(--text-muted); margin-bottom: 25px; font-size: 14px;">قم بإعداد مساعدك الذكي للبدء</p>
+            
+            <div class="input-group">
+                <label>مفتاح API (Gemini):</label>
+                <input type="password" id="api-key" class="setup-input" placeholder="AIzaSy...">
+                <i class="fa-solid fa-eye toggle-password" onclick="togglePassword()"></i>
+            </div>
+            
+            <div class="input-group">
+                <label>اسمك (كيف أناديك؟):</label>
+                <input type="text" id="username" class="setup-input" placeholder="مثال: عبدالكريم">
+            </div>
+
+            <div class="input-group">
+                <label>شخصية الذكاء الاصطناعي:</label>
+                <select id="persona" class="setup-select">
+                    <option value="assistant">🤖 مساعد عام (رسمي ومحترف)</option>
+                    <option value="teacher">🎓 معلم (يشرح بتبسيط)</option>
+                    <option value="creative">💡 مبدع (تفكير خارج الصندوق)</option>
+                    <option value="friend">😄 صديق (أسلوب مرح وغير رسمي)</option>
+                </select>
+            </div>
+
+            <button class="btn-primary" onclick="startApp()">ابدأ المحادثة <i class="fa-solid fa-arrow-left"></i></button>
+            <div id="setup-error" class="error-msg">الرجاء إدخال مفتاح API والاسم!</div>
+        </div>
+    </div>
+
+    <div id="app-container">
+        
+        <header id="header">
+            <div class="header-info">
+                <div class="ai-title">Zaki AI <i class="fa-solid fa-brain" style="color: var(--accent)"></i></div>
+                <div id="status-indicator" class="status-dot" title="مستعد"></div>
+                <span class="user-greeting" id="header-greeting"></span>
+            </div>
+            <div class="header-actions">
+                <button onclick="toggleStats()" title="الإحصائيات"><i class="fa-solid fa-chart-simple"></i></button>
+                <button onclick="toggleTheme()" title="تبديل المظهر"><i class="fa-solid fa-circle-half-stroke"></i></button>
+                <button onclick="toggleFocus()" title="وضع التركيز"><i class="fa-solid fa-expand"></i></button>
+                <button onclick="clearChat()" title="مسح المحادثة"><i class="fa-solid fa-trash-can"></i></button>
+                <button onclick="openSetup()" title="الإعدادات"><i class="fa-solid fa-gear"></i></button>
+            </div>
+        </header>
+
+        <div id="stats-panel">
+            <h4 style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">إحصائيات الجلسة 📊</h4>
+            <div class="stat-item"><span>عدد الرسائل:</span> <span class="stat-value" id="stat-msgs">0</span></div>
+            <div class="stat-item"><span>متوسط الرد:</span> <span class="stat-value" id="stat-avg">0 ث</span></div>
+            <div class="stat-item"><span>أسرع رد:</span> <span class="stat-value" id="stat-fast">0 ث</span></div>
+            <div class="stat-item"><span>إجمالي الكلمات:</span> <span class="stat-value" id="stat-words">0</span></div>
+            <div class="stat-item"><span>نسبة الإعجاب:</span> <span class="stat-value" id="stat-likes">100%</span></div>
+        </div>
+
+        <main id="chat-area">
+            </main>
+
+        <footer id="input-area">
+            <div class="timer-row">
+                <span id="response-timer">⏱️ 0.0 ثانية</span>
+                <span id="char-counter">0 / 1500</span>
+            </div>
+            <div class="input-wrapper">
+                <textarea id="user-input" rows="1" placeholder="اكتب رسالتك هنا... (Shift+Enter لسطر جديد)" dir="auto"></textarea>
+                <div class="action-btns">
+                    <button class="icon-btn" onclick="startVoiceRecognition()" title="إدخال صوتي"><i class="fa-solid fa-microphone"></i></button>
+                    <button class="icon-btn" onclick="document.getElementById('file-input').click()" title="إرفاق ملف نصي"><i class="fa-solid fa-paperclip"></i></button>
+                    <input type="file" id="file-input" accept=".txt" onchange="handleFileUpload(event)">
+                    <button id="send-btn" onclick="handleSend()"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
+            <div id="api-error" class="error-msg">فشل الاتصال! <button onclick="handleSend()" style="background:none; border:none; color:inherit; text-decoration:underline; cursor:pointer;">إعادة المحاولة</button></div>
+        </footer>
+
+    </div>
+
+    <script>
+        // --- إعدادات Marked.js و Highlight.js ---
+        marked.setOptions({
+            highlight: function(code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            },
+            langPrefix: 'hljs language-'
+        });
+
+        // --- المتغيرات العامة والحالة ---
+        let state = {
+            apiKey: '', username: '', persona: '',
+            history: [], // يخزن للـ API: {role, parts: [{text}]}
+            uiHistory: [], // يخزن للواجهة: {role, text, time, id}
+            stats: { msgs: 0, times: [], words: 0, likes: 0, dislikes: 0 }
+        };
+        
+        let abortController = null;
+        let timerInterval = null;
+        let startTime = 0;
+        let isWaiting = false;
+
+        // الشخصيات
+        const personas = {
+            assistant: "أنت Zaki AI، مساعد ذكي ورسمي ومحترف. أجب بدقة وإيجاز.",
+            teacher: "أنت Zaki AI، معلم صبور. اشرح المفاهيم المعقدة بأسلوب مبسط وممتع مع أمثلة.",
+            creative: "أنت Zaki AI، شخصية مبدعة وخيالية. قدم أفكاراً خارج الصندوق واستخدم أسلوباً فنياً.",
+            friend: "أنت Zaki AI، صديق مقرب ومرح للمستخدم. استخدم الرموز التعبيرية وتحدث بأسلوب عفوي ودود جداً. خاطب المستخدم بصيغة المذكر."
+        };
+
+        // --- التهيئة والتخزين ---
+        window.onload = () => {
+            const savedState = localStorage.getItem('zaki_state');
+            if (savedState) {
+                const parsed = JSON.parse(savedState);
+                if (parsed.apiKey && parsed.username) {
+                    state = parsed;
+                    restoreChat();
+                    showApp();
+                    return;
+                }
+            }
+            // إذا لم يكن هناك حفظ
+            document.getElementById('setup-screen').style.opacity = '1';
+        };
+
+        function saveState() {
+            localStorage.setItem('zaki_state', JSON.stringify(state));
+            updateStatsUI();
+        }
+
+        // --- واجهة الإعداد ---
+        function togglePassword() {
+            const input = document.getElementById('api-key');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        function startApp() {
+            const key = document.getElementById('api-key').value.trim();
+            const name = document.getElementById('username').value.trim();
+            const persona = document.getElementById('persona').value;
+
+            if (!key || !name) {
+                document.getElementById('setup-error').style.display = 'block';
+                return;
+            }
+
+            state.apiKey = key; state.username = name; state.persona = persona;
+            state.history = []; state.uiHistory = [];
+            saveState();
+            
+            showApp();
+            showQuickSuggestions();
+        }
+
+        function showApp() {
+            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('app-container').style.display = 'flex';
+            document.getElementById('header-greeting').innerText = `أهلاً بك، ${state.username} 👋`;
+        }
+
+        function openSetup() {
+            document.getElementById('setup-screen').style.display = 'flex';
+            document.getElementById('setup-screen').style.opacity = '1';
+            document.getElementById('api-key').value = state.apiKey;
+            document.getElementById('username').value = state.username;
+            document.getElementById('persona').value = state.persona;
+        }
+
+        // --- إدارة المحادثة ---
+        function clearChat() {
+            if(confirm("هل أنت متأكد من مسح المحادثة بالكامل؟")) {
+                state.history = []; state.uiHistory = [];
+                document.getElementById('chat-area').innerHTML = '';
+                saveState();
+                showQuickSuggestions();
+            }
+        }
+
+        function restoreChat() {
+            document.getElementById('header-greeting').innerText = `أهلاً بك مجدداً، ${state.username} 👋`;
+            const chatArea = document.getElementById('chat-area');
+            chatArea.innerHTML = '';
+            
+            if (state.uiHistory.length === 0) {
+                showQuickSuggestions();
+                return;
+            }
+
+            // إضافة رسالة ترحيبية كفصل
+            const divider = document.createElement('div');
+            divider.style.textAlign = 'center'; divider.style.color = 'var(--text-muted)'; divider.style.fontSize = '12px';
+            divider.innerText = `--- أكملنا من حيث توقفنا ---`;
+            chatArea.appendChild(divider);
+
+            state.uiHistory.forEach(msg => appendMessageUI(msg.role, msg.text, msg.time, msg.id, false));
+            scrollToBottom();
+        }
+
+        function showQuickSuggestions() {
+            const chatArea = document.getElementById('chat-area');
+            if (document.getElementById('suggestions-box')) return;
+            
+            const box = document.createElement('div');
+            box.id = 'suggestions-box';
+            box.className = 'quick-suggestions';
+            const suggestions = [
+                "ما آخر أخبار الذكاء الاصطناعي؟ 🤖",
+                "اشرح لي الثقب الأسود ببساطة 🌌",
+                "ساعدني في كتابة كود بايثون 💻",
+                "كيف أنظم وقتي بفعالية؟ ⏱️"
+            ];
+            
+            suggestions.forEach(txt => {
+                const btn = document.createElement('button');
+                btn.className = 'sugg-btn';
+                btn.innerText = txt;
+                btn.onclick = () => {
+                    document.getElementById('user-input').value = txt;
+                    handleSend();
+                    box.remove();
+                };
+                box.appendChild(btn);
+            });
+            chatArea.appendChild(box);
+        }
+
+        function removeSuggestions() {
+            const box = document.getElementById('suggestions-box');
+            if (box) box.remove();
+        }
+
+        // --- الإدخال والمؤقت ---
+        const inputEl = document.getElementById('user-input');
+        const counterEl = document.getElementById('char-counter');
+        const timerEl = document.getElementById('response-timer');
+        const sendBtn = document.getElementById('send-btn');
+        const statusDot = document.getElementById('status-indicator');
+
+        inputEl.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            if (this.value.length > 1500) this.value = this.value.substring(0, 1500);
+            counterEl.innerText = `${this.value.length} / 1500`;
+            if (this.value.length > 1400) counterEl.style.color = 'var(--warning)';
+            else counterEl.style.color = 'var(--text-muted)';
+        });
+
+        inputEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
+        });
+
+        function startTimer() {
+            timerEl.innerText = `⏱️ 0.0 ثانية`;
+            timerEl.style.color = 'var(--text-muted)';
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                timerEl.innerText = `⏱️ ${elapsed} ثانية`;
+                
+                if (elapsed > 20) timerEl.style.color = 'var(--danger)';
+                else if (elapsed > 10) timerEl.style.color = 'var(--warning)';
+            }, 100);
+        }
+
+        function stopTimer(success = true) {
+            clearInterval(timerInterval);
+            const finalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+            if(success) {
+                timerEl.innerText = `✅ رد خلال ${finalTime} ثانية`;
+                timerEl.style.color = 'var(--success)';
+                // تحديث الإحصائيات
+                state.stats.times.push(parseFloat(finalTime));
+                saveState();
+            } else {
+                timerEl.innerText = `❌ تم الإلغاء أو فشل`;
+                timerEl.style.color = 'var(--danger)';
+            }
+        }
+
+        // --- الاتصال بـ API وإرسال الرسائل ---
+        async function handleSend() {
+            if (isWaiting) {
+                // وضع الإلغاء
+                if (abortController) abortController.abort();
+                stopTimer(false);
+                resetUIReady();
+                document.getElementById('typing-indicator')?.remove();
+                return;
+            }
+
+            const text = inputEl.value.trim();
+            if (!text) return;
+
+            removeSuggestions();
+            document.getElementById('api-error').style.display = 'none';
+
+            // 1. إضافة رسالة المستخدم للواجهة والذاكرة
+            const msgId = Date.now().toString();
+            const timeStr = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+            
+            appendMessageUI('user', text, timeStr, msgId);
+            
+            state.uiHistory.push({ role: 'user', text, time: timeStr, id: msgId });
+            state.history.push({ role: 'user', parts: [{ text: text }] });
+            state.stats.msgs++;
+            state.stats.words += text.split(/\s+/).length;
+            
+            inputEl.value = ''; inputEl.style.height = 'auto'; counterEl.innerText = '0 / 1500';
+            
+            // 2. تحديث الواجهة لحالة الانتظار
+            isWaiting = true;
+            sendBtn.innerHTML = '<i class="fa-solid fa-stop"></i>';
+            sendBtn.classList.add('cancel-mode');
+            statusDot.className = 'status-dot thinking';
+            showTypingIndicator();
+            startTimer();
+
+            // تجهيز التعليمات والسياق للـ API
+            const systemInst = `${personas[state.persona]}\nاسم المستخدم: ${state.username}\nتاريخ اليوم: ${new Date().toLocaleDateString('ar-EG')}`;
+            
+            // نرسل آخر 20 رسالة فقط لتوفير التوكنز
+            let apiHistory = state.history.slice(-20);
+            if(apiHistory.length > 0 && apiHistory[0].role === 'model') {
+                apiHistory.shift(); // يجب أن يبدأ بـ user
+            }
+
+            try {
+                const responseData = await askGemini(apiHistory, systemInst);
+                
+                if (responseData.error) throw new Error(responseData.error.message);
+                
+                const aiText = responseData.candidates[0].content.parts[0].text;
+                
+                // إضافة رد الذكاء للواجهة والذاكرة
+                const aiTimeStr = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+                const aiMsgId = (Date.now() + 1).toString();
+                
+                document.getElementById('typing-indicator').remove();
+                appendMessageUI('ai', aiText, aiTimeStr, aiMsgId);
+                
+                state.uiHistory.push({ role: 'ai', text: aiText, time: aiTimeStr, id: aiMsgId });
+                state.history.push({ role: 'model', parts: [{ text: aiText }] });
+                state.stats.msgs++;
+                state.stats.words += aiText.split(/\s+/).length;
+                
+                stopTimer(true);
+                saveState();
+
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    console.log('Request cancelled by user');
+                } else {
+                    console.error('API Error:', err);
+                    document.getElementById('api-error').style.display = 'block';
+                    document.getElementById('typing-indicator')?.remove();
+                    stopTimer(false);
+                    // إزالة رسالة المستخدم من history لأنها لم تُرد عليها
+                    state.history.pop(); 
+                }
+            } finally {
+                resetUIReady();
+            }
+        }
+
+        async function askGemini(conversationHistory, systemInstruction) {
+            abortController = new AbortController();
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.apiKey}`;
+            
+            const payload = {
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                contents: conversationHistory,
+                generationConfig: { temperature: 0.8, maxOutputTokens: 1500, topP: 0.9 },
+                safetySettings: [ { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" } ]
+            };
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            return await response.json();
+        }
+
+        function resetUIReady() {
+            isWaiting = false;
+            sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>';
+            sendBtn.classList.remove('cancel-mode');
+            statusDot.className = 'status-dot';
+            inputEl.focus();
+        }
+
+        // --- التعامل مع واجهة الرسائل ---
+        function appendMessageUI(role, text, time, id, animate = true) {
+            const chatArea = document.getElementById('chat-area');
+            const wrapper = document.createElement('div');
+            wrapper.className = `message-wrapper ${role}`;
+            wrapper.id = `msg-${id}`;
+            if(!animate) wrapper.style.animation = 'none';
+
+            const header = document.createElement('div');
+            header.className = 'message-header';
+            const name = role === 'user' ? state.username : 'Zaki AI <i class="fa-solid fa-brain"></i>';
+            header.innerHTML = `<span>${name}</span> <span>${time}</span>`;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            
+            // معالجة Markdown
+            let parsedText = marked.parse(text);
+            bubble.innerHTML = parsedText;
+
+            // تنسيق الأكواد البرمجية (زر النسخ)
+            const codeBlocks = bubble.querySelectorAll('pre code');
+            codeBlocks.forEach(block => {
+                const pre = block.parentNode;
+                const container = document.createElement('div');
+                container.className = 'code-container';
+                
+                const codeHeader = document.createElement('div');
+                codeHeader.className = 'code-header';
+                const langMatch = block.className.match(/language-(\w+)/);
+                const lang = langMatch ? langMatch[1] : 'code';
+                
+                codeHeader.innerHTML = `<span>${lang}</span> <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> نسخ</button>`;
+                
+                container.appendChild(codeHeader);
+                pre.parentNode.insertBefore(container, pre);
+                container.appendChild(pre);
+            });
+
+            // أزرار التفاعل
+            const actions = document.createElement('div');
+            actions.className = 'msg-actions';
+            if(role === 'ai') {
+                actions.innerHTML = `
+                    <button onclick="rateMessage('up')" title="مفيد"><i class="fa-regular fa-thumbs-up"></i></button>
+                    <button onclick="rateMessage('down')" title="غير مفيد"><i class="fa-regular fa-thumbs-down"></i></button>
+                    <button onclick="copyText('${id}')" title="نسخ النص"><i class="fa-regular fa-clipboard"></i></button>
+                `;
+            } else {
+                actions.innerHTML = `
+                    <button onclick="copyText('${id}')" title="نسخ"><i class="fa-regular fa-clipboard"></i></button>
+                `;
+            }
+
+            wrapper.appendChild(header);
+            wrapper.appendChild(bubble);
+            wrapper.appendChild(actions);
+            chatArea.appendChild(wrapper);
+            scrollToBottom();
+        }
+
+        function showTypingIndicator() {
+            const chatArea = document.getElementById('chat-area');
+            const wrapper = document.createElement('div');
+            wrapper.className = `message-wrapper ai`;
+            wrapper.id = 'typing-indicator';
+            
+            const header = document.createElement('div');
+            header.className = 'message-header';
+            header.innerHTML = `<span>Zaki AI <i class="fa-solid fa-brain"></i></span> <span>الآن</span>`;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble typing-indicator';
+            bubble.innerHTML = `<span style="font-size:12px; margin-left:10px">Zaki يفكر</span> <div class="dot"></div><div class="dot"></div><div class="dot"></div>`;
+
+            wrapper.appendChild(header);
+            wrapper.appendChild(bubble);
+            chatArea.appendChild(wrapper);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            const chatArea = document.getElementById('chat-area');
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // --- الميزات الذكية والإضافية ---
+        function copyCode(btn) {
+            const code = btn.parentElement.nextElementSibling.innerText;
+            navigator.clipboard.writeText(code);
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> تم';
+            setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i> نسخ', 2000);
+        }
+
+        function copyText(msgId) {
+            const msgObj = state.uiHistory.find(m => m.id === msgId);
+            if(msgObj) {
+                navigator.clipboard.writeText(msgObj.text);
+                alert("تم نسخ النص!");
+            }
+        }
+
+        function rateMessage(type) {
+            if(type === 'up') state.stats.likes++; else state.stats.dislikes++;
+            saveState();
+            alert("شكراً على تقييمك!");
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+        }
+
+        function toggleFocus() {
+            document.body.classList.toggle('focus-mode');
+        }
+
+        function toggleStats() {
+            document.getElementById('stats-panel').classList.toggle('show');
+            updateStatsUI();
+        }
+
+        function updateStatsUI() {
+            document.getElementById('stat-msgs').innerText = state.stats.msgs;
+            document.getElementById('stat-words').innerText = state.stats.words;
+            
+            if(state.stats.times.length > 0) {
+                const avg = (state.stats.times.reduce((a,b)=>a+b,0) / state.stats.times.length).toFixed(1);
+                const fast = Math.min(...state.stats.times).toFixed(1);
+                document.getElementById('stat-avg').innerText = avg + ' ث';
+                document.getElementById('stat-fast').innerText = fast + ' ث';
+            }
+            
+            const totalRates = state.stats.likes + state.stats.dislikes;
+            if(totalRates > 0) {
+                const ratio = Math.round((state.stats.likes / totalRates) * 100);
+                document.getElementById('stat-likes').innerText = ratio + '%';
+            }
+        }
+
+        // الإدخال الصوتي (Web Speech API)
+        function startVoiceRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("متصفحك لا يدعم الإدخال الصوتي."); return;
+            }
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ar-SA';
+            recognition.interimResults = false;
+            
+            recognition.onstart = () => { inputEl.placeholder = "أتحدث الآن... 🎤"; };
+            recognition.onresult = (e) => {
+                const transcript = e.results[0][0].transcript;
+                inputEl.value += (inputEl.value ? ' ' : '') + transcript;
+                inputEl.dispatchEvent(new Event('input')); // لتحديث الحجم والعداد
+            };
+            recognition.onerror = (e) => { alert("حدث خطأ في الميكروفون."); };
+            recognition.onend = () => { inputEl.placeholder = "اكتب رسالتك هنا... (Shift+Enter لسطر جديد)"; };
+            
+            recognition.start();
+        }
+
+        // إرفاق ملف نصي
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target.result;
+                inputEl.value += `\n[محتوى الملف ${file.name}]:\n${content}\n`;
+                inputEl.dispatchEvent(new Event('input'));
+            };
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
