@@ -588,9 +588,23 @@
                 const responseData = await askGemini(apiHistory, systemInst);
                 
                 if (responseData.error) {
+                    const errCode = responseData.error.code || "";
                     const errMsg = responseData.error.message || "";
+                    const errStatus = responseData.error.status || "";
                     const errEl = document.getElementById("api-error");
-                    errEl.innerHTML = `❌ خطأ: تجاوزت الحد المجاني. انتظر قليلاً وأعد المحاولة يدوياً. <button onclick="handleSend()" style="background:none;border:none;color:inherit;text-decoration:underline;cursor:pointer;">إعادة المحاولة</button>`;
+                    let userMsg = "";
+                    if (errStatus === "RESOURCE_EXHAUSTED" || errMsg.includes("quota")) {
+                        userMsg = "⏳ تجاوزت الحد المجاني. انتظر دقائق وحاول مجدداً.";
+                    } else if (errStatus === "UNAUTHENTICATED" || errCode == 401) {
+                        userMsg = "🔑 مفتاح API غير صحيح. راجع الإعدادات.";
+                    } else if (errStatus === "PERMISSION_DENIED" || errCode == 403) {
+                        userMsg = "🚫 المفتاح لا يملك صلاحية. تأكد من تفعيل Gemini API.";
+                    } else if (errStatus === "NOT_FOUND" || errCode == 404) {
+                        userMsg = "❌ الموديل غير موجود.";
+                    } else {
+                        userMsg = "❌ خطأ (" + errCode + " - " + errStatus + "): " + errMsg;
+                    }
+                    errEl.innerHTML = userMsg;
                     errEl.style.display = "block";
                     document.getElementById("typing-indicator")?.remove();
                     stopTimer(false);
