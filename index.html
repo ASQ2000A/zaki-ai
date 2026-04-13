@@ -649,7 +649,7 @@
 
         async function askGemini(conversationHistory, systemInstruction) {
             abortController = new AbortController();
-            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.apiKey}`;
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${state.apiKey}`;
             
             const payload = {
                 systemInstruction: { parts: [{ text: systemInstruction }] },
